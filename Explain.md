@@ -154,3 +154,89 @@ Pode ter overhead maior devido à sincronização.
 * Use **p8** para máximo desempenho com sincronização garantida
 * Use **p9** quando precisar de comportamento de envio previsível
 * Use **p10** quando a sincronização for crítica
+
+
+---
+---
+
+**Versão Base (MPI\_Send/MPI\_Recv):**
+
+* Usa comunicação bloqueante padrão
+* Implementação simples e direta
+* O mestre envia o trabalho e recebe os resultados sequencialmente
+* Os trabalhadores recebem o trabalho, processam e enviam os resultados de volta
+* Boa para implementações básicas e depuração
+
+**p11 (MPI\_Recv e MPI\_Isend):**
+
+* Usa envios não bloqueantes com recepções bloqueantes
+* Adiciona `MPI_Request` e `MPI_Wait` para operações de envio
+* Permite possível sobreposição de envios com computação
+* Bom quando operações de envio podem ser atrasadas
+* Requer gerenciamento cuidadoso das requisições de envio
+
+**p12 (MPI\_Recv e MPI\_Rsend):**
+
+* Usa envio em modo pronto com recepções bloqueantes
+* Adiciona sincronização para garantir que as recepções estejam postadas
+* Usa `MPI_Barrier` para sincronização inicial
+* Trabalhadores postam as recepções antes de enviar os resultados
+* Implementação mais complexa, mas potencialmente mais rápida
+* Requer coordenação cuidadosa entre remetente e receptor
+
+**p13 (MPI\_Recv e MPI\_Bsend):**
+
+* Usa envio com buffer com recepções bloqueantes
+* Adiciona código de gerenciamento de buffer
+* Tamanho do buffer calculado com base no número de processos
+* Garante retorno imediato das operações de envio
+* Bom para uso previsível de memória
+* Requer memória extra para o buffer
+
+**p14 (MPI\_Recv e MPI\_Ssend):**
+
+* Usa envio síncrono com recepções bloqueantes
+* Fornece as garantias mais fortes de sincronização
+* Implementação mais simples depois da versão base
+* Bom para depuração e código com sincronização crítica
+* Pode ter maior sobrecarga devido à sincronização
+
+---
+
+**Diferenças-chave na implementação:**
+
+**Gerenciamento de Memória:**
+
+* p13 requer alocação e gerenciamento explícito de buffer
+* p12 precisa de armazenamento temporário para recepções não bloqueantes
+* Outras versões usam buffers padrão do sistema
+
+**Sincronização:**
+
+* p12 usa barreira explícita e recepções não bloqueantes para coordenação
+* p14 tem sincronização implícita através do `MPI_Ssend`
+* p11 gerencia as requisições de envio explicitamente
+* p13 depende do buffer para sincronização
+
+**Características de Desempenho:**
+
+* p11 oferece potencial para sobreposição entre envio e computação
+* p12 pode ser o mais rápido com sincronização adequada
+* p13 tem o comportamento mais previsível
+* p14 tem a maior sobrecarga de sincronização
+
+**Tratamento de Erros:**
+
+* p12 é o mais propenso a erros se a sincronização falhar
+* p13 é o mais resiliente devido ao uso de buffer
+* p14 é o mais seguro por conta da sincronização estrita
+
+---
+
+**Escolha com base nas suas necessidades:**
+
+* Use a **versão base** para comunicação simples e confiável
+* Use **p11** quando as operações de envio podem bloquear
+* Use **p12** para máximo desempenho com sincronização garantida
+* Use **p13** quando precisar de comportamento de envio previsível
+* Use **p14** quando a sincronização for crítica
