@@ -240,3 +240,57 @@ Pode ter overhead maior devido à sincronização.
 * Use **p12** para máximo desempenho com sincronização garantida
 * Use **p13** quando precisar de comportamento de envio previsível
 * Use **p14** quando a sincronização for crítica
+
+---
+
+Aqui está a tradução para o português:
+
+---
+
+**mpi\_primosbag\_p16.c:** Usa `MPI_Irecv` com `MPI_Isend`
+
+* Tanto as operações de envio quanto de recebimento são não bloqueantes
+* Requer espera explícita (`MPI_Wait`) para garantir a conclusão do envio
+* Versão mais assíncrona, com potencialmente melhor sobreposição entre comunicação e computação
+
+**mpi\_primosbag\_p17.c:** Usa `MPI_Irecv` com `MPI_Rsend`
+
+* Recebimento não bloqueante com envio em modo pronto
+* Requer sincronização (barreira) para garantir que o recebimento esteja postado
+* Mais eficiente quando o padrão de comunicação é conhecido e fixo
+
+**mpi\_primosbag\_p18.c:** Usa `MPI_Irecv` com `MPI_Bsend`
+
+* Recebimento não bloqueante com envio com buffer
+* Requer gerenciamento explícito de buffer
+* Bom para desacoplar operações de envio e recebimento
+* Adiciona código de gerenciamento de buffer e definição de `BUFSIZE`
+
+**mpi\_primosbag\_p19.c:** Usa `MPI_Irecv` com `MPI_Ssend`
+
+* Recebimento não bloqueante com envio síncrono
+* Fornece garantia de sincronização
+* Versão mais síncrona, garante o pareamento entre envio e recebimento
+
+---
+
+**Principais diferenças entre as implementações:**
+
+**Gerenciamento de Memória:**
+
+* **p18** requer alocação e anexação explícita de buffer
+* As demais usam buffers internos padrão do MPI
+
+**Sincronização:**
+
+* **p17** usa barreiras para garantir que os recebimentos estejam postados
+* **p19** fornece sincronização implícita
+* **p16** é a mais assíncrona
+* **p18** utiliza buffers para desacoplamento
+
+**Características de Desempenho:**
+
+* **p16**: Melhor para sobrepor comunicação e computação
+* **p17**: Melhor quando o padrão de comunicação é previsível
+* **p18**: Melhor quando o tempo de envio/recebimento varia
+* **p19**: Melhor quando a sincronização é crítica
