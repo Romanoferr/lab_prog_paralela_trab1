@@ -39,18 +39,30 @@ int main(int argc, char *argv[]) {
     if(num_procs > 1) {
         if (meu_ranque != 0) {
             // Workers send their counts to master using non-blocking send
-            MPI_Request request;
-            MPI_Isend(&cont, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &request);
+            MPI_Request send_request;
+            MPI_Isend(&cont, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &send_request);
             // We can do other work here if needed
-            MPI_Wait(&request, MPI_STATUS_IGNORE);  // Ensure send completes before program ends
+            MPI_Wait(&send_request, MPI_STATUS_IGNORE);
         } else {
-            // Master receives from all workers
-            total = cont;  // Initialize with master's count
+            // aloca a memória para armazenar os valores recebidos
+            MPI_Request *requests = malloc((num_procs-1) * sizeof(MPI_Request));
+            int *other_counts = malloc((num_procs-1) * sizeof(int));
+            total = cont;  // inicializa com sua própria contagem
+
+            // inicia todos os recebimentos não-bloqueantes
             for (i = 1; i < num_procs; i++) {
-                int worker_count;
-                MPI_Recv(&worker_count, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                total += worker_count;
+                MPI_Irecv(&other_counts[i-1], 1, MPI_INT, i, 0, MPI_COMM_WORLD, &requests[i-1]);
             }
+
+            // espera todos os recebimentos terminarem para somar
+            MPI_Waitall(num_procs-1, requests, MPI_STATUSES_IGNORE);
+            for (i = 0; i < num_procs-1; i++) {
+                total += other_counts[i];
+            }
+
+            // libera a memória alocada
+            free(requests);
+            free(other_counts);
         }
     } else {
         total = cont;
@@ -65,4 +77,4 @@ int main(int argc, char *argv[]) {
     }
     MPI_Finalize();
     return(0);
-}
+} 

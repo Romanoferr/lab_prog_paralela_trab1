@@ -17,6 +17,7 @@ int main(int argc, char *argv[]) {
     int cont = 0, total = 0;
     long int i, n;
     int meu_ranque, num_procs, inicio, salto;
+    const int HANDSHAKE_TAG = 33; // tag do handshake
 
     if (argc < 2) {
         printf("Valor inválido! Entre com um valor do maior inteiro\n");
@@ -38,33 +39,22 @@ int main(int argc, char *argv[]) {
         
     if(num_procs > 1) {
         if (meu_ranque == 0) {
-            // Master posts non-blocking receives first
-            total = cont;  // Initialize with master's count
-            int *worker_counts = (int *)malloc((num_procs - 1) * sizeof(int));
-            MPI_Request *recv_requests = (MPI_Request *)malloc((num_procs - 1) * sizeof(MPI_Request));
-            
-            // Post all non-blocking receives
-            for (i = 1; i < num_procs; i++) {
-                MPI_Irecv(&worker_counts[i-1], 1, MPI_INT, i, 0, MPI_COMM_WORLD, &recv_requests[i-1]);
+            total = cont;
+            int *other_counts = malloc((num_procs-1) * sizeof(int));
+            MPI_Request *requests = malloc((num_procs-1) * sizeof(MPI_Request));
+            // posta todos os Irecv antes de qualquer envio
+            for(i = 1; i < num_procs; i++) {
+                MPI_Irecv(&other_counts[i-1], 1, MPI_INT, i, 0, MPI_COMM_WORLD, &requests[i-1]);
             }
-            
-            // Signal that receives are posted
-            MPI_Barrier(MPI_COMM_WORLD);
-            
-            // Wait for all receives to complete
-            MPI_Waitall(num_procs - 1, recv_requests, MPI_STATUSES_IGNORE);
-            
-            // Sum up the results
-            for (i = 0; i < num_procs - 1; i++) {
-                total += worker_counts[i];
+            // espera todos os recebimentos
+            MPI_Waitall(num_procs-1, requests, MPI_STATUSES_IGNORE);
+            for(i = 0; i < num_procs-1; i++) {
+                total += other_counts[i];
             }
-            
-            free(worker_counts);
-            free(recv_requests);
+            free(other_counts);
+            free(requests);
         } else {
-            // Workers wait for master to post receives
-            MPI_Barrier(MPI_COMM_WORLD);
-            // Then send using ready mode send
+            // não precisa handshake, pode enviar direto
             MPI_Rsend(&cont, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
         }
     } else {
@@ -80,4 +70,4 @@ int main(int argc, char *argv[]) {
     }
     MPI_Finalize();
     return(0);
-} 
+}

@@ -28,6 +28,12 @@ int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &meu_ranque);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);    
+    
+    // aloca o buffer
+    int buffer_size = MPI_BSEND_OVERHEAD + sizeof(int);
+    void* buffer = malloc(buffer_size);
+    MPI_Buffer_attach(buffer, buffer_size);
+    
     t_inicial = MPI_Wtime();
     inicio = 3 + meu_ranque*2;
     salto = num_procs*2;
@@ -38,20 +44,23 @@ int main(int argc, char *argv[]) {
         
     if(num_procs > 1) {
         if (meu_ranque != 0) {
-            // Workers enviam de maneira sincrona
-            MPI_Ssend(&cont, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+            // processos não-raiz enviam suas contagens para o processo raiz com o bsend
+            MPI_Bsend(&cont, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
         } else {
-            // Master recebe de todos os workers
-            total = cont;  // 
+            total = cont; 
             for (i = 1; i < num_procs; i++) {
-                int worker_count;
-                MPI_Recv(&worker_count, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                total += worker_count;
+                int other_process_count;
+                MPI_Recv(&other_process_count, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                total += other_process_count;
             }
         }
     } else {
         total = cont;
     }
+    
+    // liberando o buffer
+    MPI_Buffer_detach(&buffer, &buffer_size);
+    free(buffer);
     
     t_final = MPI_Wtime();
 

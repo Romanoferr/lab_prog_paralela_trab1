@@ -38,29 +38,14 @@ int main(int argc, char *argv[]) {
         
     if(num_procs > 1) {
         if (meu_ranque != 0) {
-            // Workers send their counts to master using synchronous send
             MPI_Ssend(&cont, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
         } else {
-            // Master receives from all workers using non-blocking receive
-            total = cont;  // Initialize with master's count
-            int *worker_counts = (int *)malloc((num_procs - 1) * sizeof(int));
-            MPI_Request *recv_requests = (MPI_Request *)malloc((num_procs - 1) * sizeof(MPI_Request));
-            
-            // Post all non-blocking receives
+            total = cont;
             for (i = 1; i < num_procs; i++) {
-                MPI_Irecv(&worker_counts[i-1], 1, MPI_INT, i, 0, MPI_COMM_WORLD, &recv_requests[i-1]);
+                int other_process_count;
+                MPI_Recv(&other_process_count, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                total += other_process_count;
             }
-            
-            // Wait for all receives to complete
-            MPI_Waitall(num_procs - 1, recv_requests, MPI_STATUSES_IGNORE);
-            
-            // Sum up the results
-            for (i = 0; i < num_procs - 1; i++) {
-                total += worker_counts[i];
-            }
-            
-            free(worker_counts);
-            free(recv_requests);
         }
     } else {
         total = cont;
@@ -75,4 +60,4 @@ int main(int argc, char *argv[]) {
     }
     MPI_Finalize();
     return(0);
-} 
+}

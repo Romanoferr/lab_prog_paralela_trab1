@@ -17,6 +17,7 @@ int main(int argc, char *argv[]) {
     int cont = 0, total = 0;
     long int i, n;
     int meu_ranque, num_procs, inicio, salto;
+    MPI_Request request;
 
     if (argc < 2) {
         printf("Valor inválido! Entre com um valor do maior inteiro\n");
@@ -28,12 +29,6 @@ int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &meu_ranque);
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);    
-    
-    // Setup buffer for MPI_Bsend
-    int buffer_size = MPI_BSEND_OVERHEAD + sizeof(int);
-    void* buffer = malloc(buffer_size);
-    MPI_Buffer_attach(buffer, buffer_size);
-    
     t_inicial = MPI_Wtime();
     inicio = 3 + meu_ranque*2;
     salto = num_procs*2;
@@ -44,24 +39,22 @@ int main(int argc, char *argv[]) {
         
     if(num_procs > 1) {
         if (meu_ranque != 0) {
-            // Workers enviam para a master buferizando
-            MPI_Bsend(&cont, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+            // processos mandam suas contagens para o processo raiz
+            MPI_Isend(&cont, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &request); // Envio não bloqueante
+            // necessário inserir o mpi_wait para garantir que o envio foi concluído antes de finalizar o processo
+            MPI_Wait(&request, MPI_STATUS_IGNORE);
         } else {
-            // Master recebe de todos os workers
-            total = cont; 
+            // processo raiz recebe de todos os outros
+            total = cont;  // inicializa com sua própria contagem
             for (i = 1; i < num_procs; i++) {
-                int worker_count;
-                MPI_Recv(&worker_count, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                total += worker_count;
+                int other_process_count;
+                MPI_Recv(&other_process_count, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                total += other_process_count;
             }
         }
     } else {
         total = cont;
     }
-    
-    // Detach buffer before finalizing
-    MPI_Buffer_detach(&buffer, &buffer_size);
-    free(buffer);
     
     t_final = MPI_Wtime();
 

@@ -17,6 +17,7 @@ int main(int argc, char *argv[]) {
     int cont = 0, total = 0;
     long int i, n;
     int meu_ranque, num_procs, inicio, salto;
+    const int HANDSHAKE_TAG = 33; // tag do handshake
 
     if (argc < 2) {
         printf("Valor inválido! Entre com um valor do maior inteiro\n");
@@ -38,15 +39,18 @@ int main(int argc, char *argv[]) {
         
     if(num_procs > 1) {
         if (meu_ranque != 0) {
-            // Workers send their counts to master
-            MPI_Send(&cont, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+            // processos não-raiz postam receive antes para o handshake
+            MPI_Recv(NULL, 0, MPI_INT, 0, HANDSHAKE_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            // depois de receberem o sinal de que o processo raiz está pronto, enviam suas contagens
+            MPI_Rsend(&cont, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
         } else {
-            // Master receives from all workers
-            total = cont;  // Initialize with master's count
-            for (i = 1; i < num_procs; i++) {
-                int worker_count;
-                MPI_Recv(&worker_count, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                total += worker_count;
+            total = cont;
+            for(i = 1; i < num_procs; i++) {
+                // envia sinal para confirmar que está pronto para receber
+                MPI_Send(NULL, 0, MPI_INT, i, HANDSHAKE_TAG, MPI_COMM_WORLD);
+                int other_process_count;
+                MPI_Recv(&other_process_count, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                total += other_process_count;
             }
         }
     } else {

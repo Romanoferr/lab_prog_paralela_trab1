@@ -38,34 +38,29 @@ int main(int argc, char *argv[]) {
         
     if(num_procs > 1) {
         if (meu_ranque != 0) {
-            // Workers garantem que master está preparado
-            MPI_Barrier(MPI_COMM_WORLD);
-            // Workers enviam para master no modo preparado
-            MPI_Rsend(&cont, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+            // processos mandam suas contagens para o processo raiz
+            MPI_Send(&cont, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
         } else {
-            int *worker_counts = (int *)malloc((num_procs - 1) * sizeof(int));
-            MPI_Request *requests = (MPI_Request *)malloc((num_procs - 1) * sizeof(MPI_Request));
-            
+            // aloca a memória para armazenar os valores recebidos
+            MPI_Request *requests = malloc((num_procs-1) * sizeof(MPI_Request));
+            int *other_counts = malloc((num_procs-1) * sizeof(int));
+            total = cont;  // inicializa com sua própria contagem
 
+            // inicia todos os recebimentos não-bloqueantes
             for (i = 1; i < num_procs; i++) {
-                MPI_Irecv(&worker_counts[i-1], 1, MPI_INT, i, 0, MPI_COMM_WORLD, &requests[i-1]);
+                MPI_Irecv(&other_counts[i-1], 1, MPI_INT, i, 0, MPI_COMM_WORLD, &requests[i-1]);
             }
-            
-            MPI_Barrier(MPI_COMM_WORLD); // ?
-            
-            // Aguarda todos os recebimentos
-            MPI_Waitall(num_procs - 1, requests, MPI_STATUSES_IGNORE);
-            
-            // Soma 
-            total = cont;
-            for (i = 0; i < num_procs - 1; i++) {
-                total += worker_counts[i];
+
+            // espera todos os recebimentos terminarem para somar
+            MPI_Waitall(num_procs-1, requests, MPI_STATUSES_IGNORE);
+            for (i = 0; i < num_procs-1; i++) {
+                total += other_counts[i];
             }
-            
-            free(worker_counts);
+
+            // libera a memória alocada
             free(requests);
-        }
-    } else {
+            free(other_counts);
+    }} else {
         total = cont;
     }
     
