@@ -46,15 +46,21 @@ int main(int argc, char *argv[]) {
             for(i = 1; i < num_procs; i++) {
                 MPI_Irecv(&other_counts[i-1], 1, MPI_INT, i, 0, MPI_COMM_WORLD, &requests[i-1]);
             }
+
+            MPI_Barrier(MPI_COMM_WORLD);
+
             // espera todos os recebimentos
             MPI_Waitall(num_procs-1, requests, MPI_STATUSES_IGNORE);
+            
             for(i = 0; i < num_procs-1; i++) {
                 total += other_counts[i];
             }
+            
             free(other_counts);
             free(requests);
         } else {
-            // não precisa handshake, pode enviar direto
+            // espera que o processo 0 poste seus receives
+            MPI_Barrier(MPI_COMM_WORLD);
             MPI_Rsend(&cont, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
         }
     } else {
