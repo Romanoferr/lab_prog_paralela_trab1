@@ -40,12 +40,12 @@ int main(int argc, char *argv[]) {
     if(num_procs > 1) {
         if (meu_ranque != 0) {
             // processos mandam suas contagens para o processo raiz
-            MPI_Isend(&cont, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &request); // Envio não bloqueante
+            MPI_Isend(&cont, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &request);
             // necessário inserir o mpi_wait para garantir que o envio foi concluído antes de finalizar o processo
             MPI_Wait(&request, MPI_STATUS_IGNORE);
         } else {
-            // processo raiz recebe de todos os outros
             total = cont;  // inicializa com sua própria contagem
+            // processo raiz recebe de todos os outros
             for (i = 1; i < num_procs; i++) {
                 int other_process_count;
                 MPI_Recv(&other_process_count, 1, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
