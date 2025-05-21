@@ -38,10 +38,8 @@ int main(int argc, char *argv[]) {
         
     if(num_procs > 1) {
         if (meu_ranque != 0) {
-            // Workers send their counts to master using non-blocking send
             MPI_Request send_request;
             MPI_Isend(&cont, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &send_request);
-            // We can do other work here if needed
             MPI_Wait(&send_request, MPI_STATUS_IGNORE);
         } else {
             // aloca a memória para armazenar os valores recebidos
